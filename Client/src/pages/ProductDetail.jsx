@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { productApi }   from '../api/productApi'
+import { orderApi }     from '../api/orderApi'
 import { optimizeImage } from '../utils/imageUrl'
 import useAuthStore     from '../store/authStore'
 import useCartStore     from '../store/cartStore'
 import useToastStore    from '../store/toastStore'
+import usePayment       from '../hooks/usePayment'
 import ProductCard      from '../components/common/ProductCard'
-import SkeletonCard     from '../components/common/SkeletonCard'
+import AddressModal     from '../components/common/AddressModal'
 
 const DUMMY_COLORS = ['베이지','카키','차콜','블랙','화이트','네이비','그레이','브라운','빨강','블루','그린','아이보리']
 const SIZES        = ['S', 'M', 'L', 'XL', 'XXL']
@@ -32,8 +34,10 @@ export default function ProductDetail() {
   const { id }     = useParams()
   const navigate   = useNavigate()
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const user       = useAuthStore((s) => s.user)
   const addToCart  = useCartStore((s) => s.addToCart)
   const showToast  = useToastStore((s) => s.showToast)
+  const { requestPayment } = usePayment()
 
   const [product,  setProduct]  = useState(null)
   const [related,  setRelated]  = useState([])
@@ -41,6 +45,10 @@ export default function ProductDetail() {
   const [selectedColor, setSelectedColor] = useState(null)
   const [selectedSize,  setSelectedSize]  = useState(null)
   const [quantity, setQuantity] = useState(1)
+
+  const [modalOpen,    setModalOpen]    = useState(false)
+  const [address,      setAddress]      = useState({ name: '', phone: '', zip: '', address: '', detail: '' })
+  const [orderLoading, setOrderLoading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -59,6 +67,59 @@ export default function ProductDetail() {
       navigate('/404', { replace: true })
     }).finally(() => setLoading(false))
   }, [id, navigate])
+
+  // 유저 정보로 배송지 기본값 채우기
+  useEffect(() => {
+    if (user) {
+      setAddress((a) => ({
+        ...a,
+        name:  a.name  || user.name  || '',
+        phone: a.phone || user.phone || '',
+      }))
+    }
+  }, [user])
+
+  const handleAddressChange = (e) =>
+    setAddress((a) => ({ ...a, [e.target.name]: e.target.value }))
+
+  const handleBuyNow = () => {
+    if (!isLoggedIn) {
+      navigate('/login', { state: { from: `/products/detail/${id}` } })
+      return
+    }
+    if (!selectedColor) { showToast('색상을 선택해주세요.', 'error'); return }
+    if (!selectedSize)  { showToast('사이즈를 선택해주세요.', 'error'); return }
+    setModalOpen(true)
+  }
+
+  const handleDirectPayment = async () => {
+    if (!address.name || !address.phone || !address.address) {
+      showToast('받는분, 연락처, 주소를 모두 입력해주세요.', 'error')
+      return
+    }
+    setOrderLoading(true)
+    try {
+      const { data } = await orderApi.create({
+        shippingAddress: address,
+        directItems: [{
+          productId:     product._id,
+          productCode:   product.productCode,
+          productName:   product.name,
+          cloudinaryUrl: product.cloudinaryUrl,
+          color:         selectedColor,
+          size:          selectedSize,
+          quantity,
+          price:         product.salePrice,
+        }],
+      })
+      setModalOpen(false)
+      await requestPayment(data.order._id)
+    } catch (err) {
+      showToast(err.response?.data?.message || '주문 생성에 실패했습니다.', 'error')
+    } finally {
+      setOrderLoading(false)
+    }
+  }
 
   const handleAddToCart = async () => {
     if (!isLoggedIn) {
@@ -225,7 +286,7 @@ export default function ProductDetail() {
               장바구니 담기
             </button>
             <button
-              onClick={() => alert('준비중입니다.')}
+              onClick={handleBuyNow}
               className="w-full py-3.5 text-sm font-medium bg-black text-white tracking-widest hover:bg-gray-800 transition-colors"
             >
               바로 구매
@@ -309,6 +370,15 @@ export default function ProductDetail() {
           </div>
         </div>
       )}
+
+      <AddressModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        address={address}
+        onChange={handleAddressChange}
+        onConfirm={handleDirectPayment}
+        loading={orderLoading}
+      />
     </div>
   )
 }

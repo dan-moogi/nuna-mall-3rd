@@ -7,41 +7,63 @@ const CANCELABLE = ['결제대기', '결제완료']
 // ─── POST /api/orders ─────────────────────────────────────────────────────────
 exports.createOrder = async (req, res, next) => {
   try {
-    const cart = await Cart.findOne({ user: req.user.id })
-    if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ success: false, message: '장바구니가 비어있습니다.' })
-    }
+    const { shippingAddress, directItems } = req.body
 
-    const { shippingAddress } = req.body
     if (!shippingAddress?.name || !shippingAddress?.address || !shippingAddress?.phone) {
       return res.status(400).json({ success: false, message: '배송 정보를 입력해주세요.' })
     }
 
-    const totalPrice  = cart.totalPrice
+    let items, totalPrice, cart
+
+    if (directItems && directItems.length > 0) {
+      // 바로 구매: 요청 body의 아이템 사용
+      items = directItems.map((i) => ({
+        product:       i.productId,
+        productCode:   i.productCode,
+        productName:   i.productName,
+        cloudinaryUrl: i.cloudinaryUrl,
+        color:         i.color,
+        size:          i.size,
+        quantity:      i.quantity,
+        price:         i.price,
+      }))
+      totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+    } else {
+      // 장바구니에서 주문
+      cart = await Cart.findOne({ user: req.user.id })
+      if (!cart || cart.items.length === 0) {
+        return res.status(400).json({ success: false, message: '장바구니가 비어있습니다.' })
+      }
+      items = cart.items.map((i) => ({
+        product:       i.product,
+        productCode:   i.productCode,
+        productName:   i.productName,
+        cloudinaryUrl: i.cloudinaryUrl,
+        color:         i.color,
+        size:          i.size,
+        quantity:      i.quantity,
+        price:         i.price,
+      }))
+      totalPrice = cart.totalPrice
+    }
+
     const shippingFee = totalPrice >= 50000 ? 0 : 3000
     const finalPrice  = totalPrice + shippingFee
 
     const order = await new Order({
-      user:    req.user.id,
-      items:   cart.items.map((i) => ({
-        product:      i.product,
-        productCode:  i.productCode,
-        productName:  i.productName,
-        cloudinaryUrl: i.cloudinaryUrl,
-        color:        i.color,
-        size:         i.size,
-        quantity:     i.quantity,
-        price:        i.price,
-      })),
+      user: req.user.id,
+      items,
       totalPrice,
       shippingFee,
       finalPrice,
       shippingAddress,
     }).save()
 
-    // 장바구니 비우기
-    cart.items = []
-    await cart.save()
+    // 장바구니 기반 주문이면 장바구니 비우기
+    if (cart) {
+      cart.items = []
+      await cart.save()
+    }
 
     res.status(201).json({ success: true, order })
   } catch (err) { next(err) }
