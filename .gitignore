@@ -1,0 +1,7 @@
+**/.env
+**/node_modules/
+**/dist/
+Server/src/scripts/scraped_data/
+Server/logs/
+Server/backups/
+*.log
