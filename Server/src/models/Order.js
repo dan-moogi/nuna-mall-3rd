@@ -51,7 +51,7 @@ const orderSchema = new mongoose.Schema({
 })
 
 // orderNumber 자동 생성
-orderSchema.pre('save', function (next) {
+orderSchema.pre('save', async function () {
   if (!this.orderNumber) {
     this.orderNumber =
       'NM' +
@@ -59,7 +59,6 @@ orderSchema.pre('save', function (next) {
       Math.random().toString(36).slice(-4).toUpperCase()
   }
   this.updatedAt = Date.now()
-  next()
 })
 
 module.exports = mongoose.model('Order', orderSchema)
