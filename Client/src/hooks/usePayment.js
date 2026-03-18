@@ -52,22 +52,25 @@ export function usePayment() {
       form.method = 'POST'
       form.style.display = 'none'
 
+      // INIStdPay.pay() SDK는 P_ 없는 필드명 사용
       const fields = {
-        P_INI_PAYMENT:  'CARD',
-        P_MID:          payInfo.mid,
-        P_OID:          payInfo.oid,
-        P_AMT:          payInfo.price,
-        P_GOODS:        payInfo.goodname,
-        P_UNAME:        payInfo.buyername,
-        P_MOBILE:       payInfo.buyertel,
-        P_EMAIL:        buyerEmail,
-        P_TIMESTAMP:    payInfo.timestamp,
-        P_SIGNATURE:    payInfo.signature,
-        P_VERIFICATION: payInfo.verification,
-        P_NOTI_URL:     import.meta.env.VITE_API_URL + '/payment/webhook',
-        P_NEXT_URL:     window.location.origin + '/payment/result',
-        P_CHARSET:      'UTF-8',
-        P_RESERVED:     'acodeset=utf8&bypass_isp=Y&closeBottomNav=Y',
+        mid:          payInfo.mid,
+        price:        payInfo.price,
+        oid:          payInfo.oid,
+        timestamp:    payInfo.timestamp,
+        signature:    payInfo.signature,
+        verification: payInfo.verification,
+        goodname:     payInfo.goodname,
+        buyername:    payInfo.buyername,
+        buyertel:     payInfo.buyertel,
+        buyeremail:   buyerEmail,
+        returnUrl:    window.location.origin + '/payment/result',
+        closeUrl:     window.location.origin,
+        gopaymethod:  'Card',
+        currency:     'WON',
+        langWallet:   'KO',
+        acceptmethod: 'CARDFLY',
+        P_NOTI:       import.meta.env.VITE_API_URL + '/payment/webhook',
       }
 
       Object.entries(fields).forEach(([name, value]) => {
