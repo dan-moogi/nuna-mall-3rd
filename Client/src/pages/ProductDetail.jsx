@@ -60,7 +60,7 @@ export default function ProductDetail() {
     }).finally(() => setLoading(false))
   }, [id, navigate])
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isLoggedIn) {
       navigate('/login', { state: { from: `/products/detail/${id}` } })
       return
@@ -73,16 +73,17 @@ export default function ProductDetail() {
       showToast('사이즈를 선택해주세요.', 'error')
       return
     }
-    addToCart({
-      productId:    product._id,
-      productCode:  product.productCode,
-      productName:  product.name,
+    const ok = await addToCart({
+      productId:     product._id,
+      productCode:   product.productCode,
+      productName:   product.name,
       cloudinaryUrl: product.cloudinaryUrl,
-      color:        selectedColor,
-      size:         selectedSize,
+      color:         selectedColor,
+      size:          selectedSize,
       quantity,
-      price:        product.salePrice,
+      price:         product.salePrice,
     })
+    if (ok) navigate('/cart')
   }
 
   if (loading) return <ProductDetailSkeleton />

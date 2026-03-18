@@ -38,11 +38,13 @@ const useCartStore = create((set) => ({
         totalCount: calcCount(items),
       })
       useToastStore.getState().showToast('장바구니에 담겼습니다! 🛍️')
+      return true
     } catch (err) {
       useToastStore.getState().showToast(
         err.response?.data?.message || '장바구니 추가에 실패했습니다.',
         'error'
       )
+      return false
     }
   },
 
