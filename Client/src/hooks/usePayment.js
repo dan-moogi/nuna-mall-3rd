@@ -2,8 +2,36 @@ import { useState } from 'react'
 import { paymentApi } from '../api/paymentApi'
 import useToastStore from '../store/toastStore'
 
+// 테스트/운영 SDK를 동적으로 로드
+function loadInicisSDK(isTest) {
+  return new Promise((resolve, reject) => {
+    const src = isTest
+      ? 'https://stgstdpay.inicis.com/stdjs/INIStdPay.js'
+      : 'https://stdpay.inicis.com/stdjs/INIStdPay.js'
+
+    // 이미 로드된 같은 SDK면 재사용
+    if (window.INIStdPay) {
+      const existing = document.querySelector('script[data-inicis]')
+      const alreadyCorrect = existing && existing.src === src
+      if (alreadyCorrect) { resolve(); return }
+    }
+
+    // 기존 SDK 제거 후 재로드
+    document.querySelectorAll('script[data-inicis]').forEach((s) => s.remove())
+    delete window.INIStdPay
+
+    const script = document.createElement('script')
+    script.src = src
+    script.charset = 'UTF-8'
+    script.setAttribute('data-inicis', '')
+    script.onload = resolve
+    script.onerror = () => reject(new Error('KG이니시스 SDK 로드 실패'))
+    document.head.appendChild(script)
+  })
+}
+
 export function usePayment() {
-  const [loading, setLoading]   = useState(false)
+  const [loading, setLoading] = useState(false)
   const showToast = useToastStore((s) => s.showToast)
 
   const requestPayment = async (orderId, buyerEmail = '') => {
@@ -12,10 +40,17 @@ export function usePayment() {
       const { data } = await paymentApi.prepare(orderId)
       const { payInfo } = data
 
-      // 테스트 MID면 스테이징, 아니면 운영 URL
-      const payUrl = payInfo.mid === 'INIpayTest'
-        ? 'https://stgstdpay.inicis.com/stdpay'
-        : 'https://stdpay.inicis.com/stdpay'
+      const isTest = payInfo.mid === 'INIpayTest'
+      await loadInicisSDK(isTest)
+
+      const FORM_ID = 'ini-pay-form'
+      const existing = document.getElementById(FORM_ID)
+      if (existing) existing.remove()
+
+      const form = document.createElement('form')
+      form.id = FORM_ID
+      form.method = 'POST'
+      form.style.display = 'none'
 
       const fields = {
         P_INI_PAYMENT:  'CARD',
@@ -35,17 +70,6 @@ export function usePayment() {
         P_RESERVED:     'acodeset=utf8&bypass_isp=Y&closeBottomNav=Y',
       }
 
-      // SDK 대신 직접 form POST → 팝업차단·SDK 미로드 문제 우회
-      const FORM_ID = 'ini-pay-form'
-      const existing = document.getElementById(FORM_ID)
-      if (existing) existing.remove()
-
-      const form = document.createElement('form')
-      form.id     = FORM_ID
-      form.method = 'POST'
-      form.action = payUrl
-      form.style.display = 'none'
-
       Object.entries(fields).forEach(([name, value]) => {
         const input = document.createElement('input')
         input.type  = 'hidden'
@@ -55,7 +79,7 @@ export function usePayment() {
       })
 
       document.body.appendChild(form)
-      form.submit()   // 페이지 전체가 KG이니시스로 이동 → 결제 후 P_NEXT_URL 복귀
+      window.INIStdPay.pay(FORM_ID)   // SDK가 올바른 결제 URL로 제출
     } catch (err) {
       showToast(err.response?.data?.message || '결제 준비 중 오류가 발생했습니다.', 'error')
     } finally {
