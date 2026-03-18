@@ -35,7 +35,12 @@ app.use(requestLogger)
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(mongoSanitize())
+// Express 5에서 req.query가 getter-only → mongoSanitize() 미들웨어 대신 body/params만 직접 처리
+app.use((req, res, next) => {
+  if (req.body)   req.body   = mongoSanitize.sanitize(req.body)
+  if (req.params) req.params = mongoSanitize.sanitize(req.params)
+  next()
+})
 
 // 헬스 체크 (상세 버전)
 app.get('/api/health', async (req, res) => {
