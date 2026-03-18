@@ -12,7 +12,7 @@ export function usePayment() {
       const { data } = await paymentApi.prepare(orderId)
       const { payInfo } = data
 
-      const payParams = {
+      const fields = {
         P_INI_PAYMENT:  'CARD',
         P_MID:          payInfo.mid,
         P_OID:          payInfo.oid,
@@ -30,8 +30,26 @@ export function usePayment() {
         P_RESERVED:     'acodeset=utf8&bypass_isp=Y&closeBottomNav=Y',
       }
 
-      window.INIStdPay.pay(payParams)
-      // 이후 KG이니시스가 결제창을 띄우고 /payment/result 로 리다이렉트
+      // KG이니시스는 form ID를 인수로 받음 → 동적 form 생성 후 호출
+      const FORM_ID = 'ini-pay-form'
+      let form = document.getElementById(FORM_ID)
+      if (form) form.remove()
+
+      form = document.createElement('form')
+      form.id = FORM_ID
+      form.method = 'POST'
+      form.style.display = 'none'
+
+      Object.entries(fields).forEach(([name, value]) => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = name
+        input.value = value ?? ''
+        form.appendChild(input)
+      })
+
+      document.body.appendChild(form)
+      window.INIStdPay.pay(FORM_ID)
     } catch (err) {
       showToast(err.response?.data?.message || '결제 준비 중 오류가 발생했습니다.', 'error')
     } finally {
