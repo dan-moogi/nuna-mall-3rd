@@ -4,7 +4,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const cookieParser = require('cookie-parser')
 const mongoSanitize = require('express-mongo-sanitize')
-const { clean: xssClean } = require('xss-clean/lib/xss')
+const xssClean = require('xss-clean')
 const rateLimit = require('express-rate-limit')
 const mongoose = require('mongoose')
 const connectDB = require('./src/config/db')
@@ -43,11 +43,7 @@ app.use((req, res, next) => {
   if (req.params) req.params = mongoSanitize.sanitize(req.params)
   next()
 })
-app.use((req, res, next) => {
-  if (req.body)   req.body   = xssClean(req.body)
-  if (req.params) req.params = xssClean(req.params)
-  next()
-})
+app.use(xssClean())
 
 // 헬스 체크 (상세 버전)
 app.get('/api/health', async (req, res) => {
