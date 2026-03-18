@@ -7,6 +7,7 @@ const useAuthStore = create((set, get) => ({
   user:        null,
   accessToken: null,
   isLoggedIn:  false,
+  authLoading: true,   // initAuth 완료 전까지 true
 
   setUser:  (user)  => set({ user }),
   setToken: (token) => set({ accessToken: token, isLoggedIn: true }),
@@ -26,6 +27,8 @@ const useAuthStore = create((set, get) => ({
       set({ user: meData.user })
     } catch {
       set({ user: null, accessToken: null, isLoggedIn: false })
+    } finally {
+      set({ authLoading: false })
     }
   },
 

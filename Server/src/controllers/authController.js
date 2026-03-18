@@ -23,7 +23,7 @@ function setRefreshCookie(res, token) {
   res.cookie('refreshToken', token, {
     httpOnly: true,
     secure:   process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     maxAge:   7 * 24 * 60 * 60 * 1000, // 7일
   })
 }
@@ -142,7 +142,7 @@ exports.logout = async (req, res, next) => {
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     })
 
     return res.json({ success: true, message: '로그아웃 되었습니다.' })
