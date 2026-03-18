@@ -1,4 +1,5 @@
 'use strict'
+require('../config/env')   // .env 로드 (반드시 최상단)
 const mongoose = require('mongoose')
 
 const LOCAL_URI  = process.env.MONGODB_URI        || 'mongodb://localhost:27017/nuna_mall'
@@ -56,7 +57,6 @@ async function migrate() {
   console.log('\n🎉 Atlas 마이그레이션 완료!')
 }
 
-require('../config/env')   // .env 로드
 migrate().catch((err) => {
   console.error('❌ 마이그레이션 실패:', err.message)
   process.exit(1)
