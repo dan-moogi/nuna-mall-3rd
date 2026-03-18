@@ -4,7 +4,6 @@ const cors = require('cors')
 const helmet = require('helmet')
 const cookieParser = require('cookie-parser')
 const mongoSanitize = require('express-mongo-sanitize')
-const xssClean = require('xss-clean')
 const rateLimit = require('express-rate-limit')
 const mongoose = require('mongoose')
 const connectDB = require('./src/config/db')
@@ -36,14 +35,7 @@ app.use(requestLogger)
 app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-// express-mongo-sanitize & xss-clean: Express 5에서 req.query가 getter-only라
-// body/params만 처리 (query는 읽기 전용이므로 건너뜀)
-app.use((req, res, next) => {
-  if (req.body)   req.body   = mongoSanitize.sanitize(req.body)
-  if (req.params) req.params = mongoSanitize.sanitize(req.params)
-  next()
-})
-app.use(xssClean())
+app.use(mongoSanitize())
 
 // 헬스 체크 (상세 버전)
 app.get('/api/health', async (req, res) => {
