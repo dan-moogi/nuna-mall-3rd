@@ -19,10 +19,9 @@ const cartSchema = new mongoose.Schema({
 })
 
 // totalPrice 자동 계산
-cartSchema.pre('save', function (next) {
+cartSchema.pre('save', async function () {
   this.totalPrice = this.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   this.updatedAt  = Date.now()
-  next()
 })
 
 module.exports = mongoose.model('Cart', cartSchema)
